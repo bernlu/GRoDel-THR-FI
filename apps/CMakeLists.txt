@@ -1,0 +1,10 @@
+add_executable(harmonicResistanceExperiments harmonicResistanceExperiments.cpp)
+
+target_link_libraries(harmonicResistanceExperiments PRIVATE harmonicResistance networkit)
+
+install(TARGETS harmonicResistanceExperiments)
+
+
+add_executable(matrixMarket2nkb matrixMarketToNetworkitBinary.cpp)
+
+target_link_libraries(matrixMarket2nkb PRIVATE harmonicResistance networkit)

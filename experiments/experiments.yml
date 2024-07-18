@@ -1,0 +1,199 @@
+experiments:    
+  - name: harmonicResistanceGreedy
+    args: ['harmonicResistanceExperiments', '@INSTANCE@', '--loglevel', 'INFO', '@EXTRA_ARGS@', ]
+    stdout: out
+    exclusive: true
+    use_builds: [harmonicResistance]
+    timeout: 43200
+    
+  - name: harmonicResistanceExactSolution
+    args: ['python', 'solveExactHarmonicResistance.py', '-i', '@INSTANCE@', '-o', '@OUTPUT_SUBDIR@', '@EXTRA_ARGS@',]
+    stdout: out
+    use_builds: [networkit-py]
+    timeout: 43200
+    environ:
+      PYTHONPATH: '@PREFIX_DIR_FOR:networkit-py@:$PYTHONPATH'  # python will search PYTHONPATH for libraries
+  
+  - name: forestIndexExactSolution
+    args: ['python', 'solveExactForestIndex.py', '-i', '@INSTANCE@', '-o', '@OUTPUT_SUBDIR@', '@EXTRA_ARGS@',]
+    stdout: out
+    use_builds: [networkit-py]
+    timeout: 43200
+    environ:
+      PYTHONPATH: '@PREFIX_DIR_FOR:networkit-py@:$PYTHONPATH'  # python will search PYTHONPATH for libraries
+  
+  - name: forestIndexGreedy
+    args: ['python', 'forestIndexMain.py', '-i', '@INSTANCE@', '@EXTRA_ARGS@', ]
+    stdout: out
+    exclusive: true
+    use_builds: [forestIndex]
+    timeout: 43200
+    environ:
+      PYTHONPATH: '@PREFIX_DIR_FOR:forestIndex@:$PYTHONPATH'  # python will search PYTHONPATH for libraries
+
+
+builds:
+  - name: harmonicResistance
+    git: https://github.com/bernlu/GRoDel-THR-FI.git
+    recursive-clone: true
+    configure:
+      - args:
+        - 'cmake'
+        - '-DCMAKE_INSTALL_PREFIX=@THIS_PREFIX_DIR@'
+        - '@THIS_CLONE_DIR@'
+
+    compile:
+      - args:
+        - 'make'
+        - '-j@PARALLELISM@'
+
+    install:
+      - args:
+        - 'make'
+        - 'install'
+  
+  - name: forestIndex
+    git: https://github.com/bernlu/networkit-robustness.git
+    recursive-clone: true
+    install:
+      - args:
+        - 'pip'
+        - 'install'
+        - '--target=@THIS_PREFIX_DIR@'  # tell pip to install into the install directory ('prefix dir') of this build+revision
+        - '@THIS_CLONE_DIR@'
+
+  - name: networkit-py
+    git: https://github.com/networkit/networkit.git
+    recursive-clone: true
+    install:
+      - args:
+        - 'pip'
+        - 'install'
+        - '--target=@THIS_PREFIX_DIR@'  # tell pip to install into the install directory ('prefix dir') of this build+revision
+        - '@THIS_CLONE_DIR@'
+        
+        
+        
+
+
+revisions:
+  - name: harmonicResistance-main
+    build_version:
+      'harmonicResistance': 'main'
+
+  - name: harmonicResistance-parallelLamg
+    build_version:
+      'harmonicResistance': 'main'
+
+  - name: forestIndex-via-resistance
+    build_version:
+      'forestIndex': 'd4c3f5fcd808531e2fbe2cd1da91d03b4d3713dd' # our version of the forest index optimizer - not exactly the same algorithm used in the forest index paper, but similar enough.
+
+  - name: forestIndex-via-resistance-full-search
+    build_version:
+      'forestIndex': 'c5fca102d206e86ade58a86b902292a70e664676' # does not use the submodular greedy algorithm speedup technique. Used to compare the result quality to our other version.
+
+  - name: networkit-py-main
+    build_version:
+      'networkit-py': '11.0'
+
+
+variants:
+  - axis: 'k'
+    items:
+      - name: 'k-25'
+        extra_args: ['-k', '25']
+      - name: 'k-20'
+        extra_args: ['-k', '20']
+      - name: 'k-10'
+        extra_args: ['-k', '10']
+      - name: 'k-5'
+        extra_args: ['-k', '5']
+
+
+instdir: "../instances"
+instances:
+  - repo: local
+    set: ['berlin-case-study']
+    items: 
+      - Berlin-Germany.nkb
+      - Mitte-Berlin-Germany.nkb
+      - Treptow-Köpenick-Berlin-Germany.nkb
+
+  - repo: local
+    set: ['tiny-graphs']
+    items:
+      - ba1.nkb
+      - ba2.nkb
+      - ba3.nkb
+      - ws1.nkb
+      - ws2.nkb
+      - ws3.nkb
+      - grid5x3.nkb
+      - grid5x6.nkb
+      - grid7x4.nkb
+      - hotdog5x6.nkb
+      - disturbedRing.nkb
+
+  - repo: local
+    set: ['small-graphs']
+    items:
+      - EmailUniv.nkb
+      - inf-power.nkb
+      - facebook-ego-combined.nkb
+      - web-spam.nkb
+      - Erdos992.nkb
+      - Bcspwr10.nkb
+      - Reality.nkb
+      - wiki-Vote.nkb
+      - Dmela.nkb
+      - p2p-Gnutella09.nkb
+      - airTrafficControl.nkb
+      - euroroad.nkb
+    
+  - repo: local
+    set: ['medium-graphs']
+    items:
+      - p2p-Gnutella04.nkb
+      - web-indochina.nkb
+
+
+matrix:
+  include:
+    # exact solutions
+    - experiments: [harmonicResistanceExactSolution]
+      instsets: [tiny-graphs]
+      variants: [k-5]
+      revisions: [networkit-py-main]
+    - experiments: [forestIndexExactSolution]
+      instsets: [tiny-graphs]
+      variants: [k-5]
+      revisions: [networkit-py-main]
+ 
+    # case study
+    - experiments: [harmonicResistanceGreedy]
+      instsets: [berlin-case-study]
+      variants: [k-20]
+      revisions: [harmonicResistance-main]
+
+    - experiments: [forestIndexGreedy]
+      instsets: [berlin-case-study]
+      variants: [k-20]
+      revisions: [forestIndex-via-resistance]
+
+    # greedy solutions
+    - experiments: [harmonicResistanceGreedy]
+      instsets: [tiny-graphs, small-graphs, medium-graphs]
+      variants: [k-25]
+      revisions: [harmonicResistance-main]
+
+    # greedy solutions, parallel lamg
+    - experiments: [harmonicResistanceGreedy]
+      instsets: [tiny-graphs, small-graphs, medium-graphs]
+      variants: [k-25]
+      revisions: [harmonicResistance-parallelLamg]
+
+    - experiments: [forestIndexGreedy]
+      instsets: [tiny-graphs, small-graphs, medium-graphs]
+      variants: [k-25]
+      revisions: [forestIndex-via-resistance, forestIndex-via-resistance-full-search]
