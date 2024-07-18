@@ -1,0 +1,3 @@
+[submodule "extern/networkit"]
+	path = extern/networkit
+	url = git@github.com:bernlu/networkit-robustness.git
